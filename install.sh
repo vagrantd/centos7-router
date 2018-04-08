@@ -89,9 +89,20 @@ centos::shadowsocks-libev() {
     popd
 }
 
-cd /tmp
+centos::ss-tproxy() {
+    git clone https://github.com/zfl9/ss-tproxy.git
+    pushd ss-tproxy/
+    sudo cp -af ss-tproxy /usr/local/bin/
+    sudo cp -af ss-tproxy.conf /etc/
+    sudo cp -af ss-tproxy.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+    popd
+}
 
+
+cd /tmp
 centos::chinadns
-# centos::dnsforwarder
+centos::dnsforwarder
 centos::ipset
 centos::shadowsocks-libev
+centos::ss-tproxy
