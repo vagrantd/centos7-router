@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
+# https://www.zfl9.com/ss-redir.html#%E5%AE%89%E8%A3%85%E4%BE%9D%E8%B5%96
 
 set -e
 set -u
 
-install::chinadns() {
+centos::chinadns() {
     sudo yum install -y wget
 
     ## 获取 chinadns 源码
@@ -18,13 +19,13 @@ install::chinadns() {
     make && sudo make install
 
     ## chinadns 相关文件
-    sudo mkdir -p /etc/chinadns/
-    sudo cp -af chnroute.txt /etc/chinadns/
+    # sudo mkdir -p /etc/chinadns/
+    # sudo cp -af chnroute.txt /etc/chinadns/
 
     popd
 }
 
-install::dnsforwarder() {
+centos::dnsforwarder() {
     sudo yum install -y libcurl-devel wget unzip
 
     ## 获取 dnsforwarder 源码
@@ -42,14 +43,6 @@ install::dnsforwarder() {
     cp -af default.config ~/.dnsforwarder/config
 
     popd
-}
-
-centos::chinadns() {
-    install::chinadns
-}
-
-centos::dnsforwarder() {
-    install::dnsforwarder
 }
 
 centos::ipset() {
@@ -70,7 +63,7 @@ centos::shadowsocks-libev() {
     sudo ldconfig
 
     # 编译&安装 "MbedTLS"
-    export MBEDTLS_VER=2.8.0
+    export MBEDTLS_VER=2.9.0
     wget https://tls.mbed.org/download/mbedtls-$MBEDTLS_VER-gpl.tgz
     tar xvf mbedtls-$MBEDTLS_VER-gpl.tgz
     pushd mbedtls-$MBEDTLS_VER
@@ -91,18 +84,52 @@ centos::shadowsocks-libev() {
 
 centos::ss-tproxy() {
     git clone https://github.com/zfl9/ss-tproxy.git
+
     pushd ss-tproxy/
-    sudo cp -af ss-tproxy /usr/local/bin/
-    sudo cp -af ss-tproxy.conf /etc/
-    sudo cp -af ss-tproxy.service /etc/systemd/system/
-    sudo systemctl daemon-reload
+    cp -af ss-tproxy /usr/local/bin/
+    cp -af ss-switch /usr/local/bin/
+    chown root:root /usr/local/bin/ss-tproxy /usr/local/bin/ss-switch
+    chmod +x /usr/local/bin/ss-tproxy /usr/local/bin/ss-switch
+    mkdir -m 0755 -p /etc/tproxy
+    cp -af pdnsd.conf /etc/tproxy/
+    cp -af chnroute.txt /etc/tproxy/
+    cp -af chnroute.ipset /etc/tproxy/
+    cp -af ss-tproxy.conf /etc/tproxy/
+    chown -R root:root /etc/tproxy
+    chmod 0644 /etc/tproxy/*
+
+    cp -af ss-tproxy.service /etc/systemd/system/
+    systemctl daemon-reload
+
     popd
 }
 
-
 cd /tmp
-centos::chinadns
-centos::dnsforwarder
+
+# 1. curl
+yum install -y curl
+
+# 2. ipset
 centos::ipset
+
+# 3. iproute2
+yum install -y iproute
+
+# 4. haveged
+yum -y install haveged
+systemctl enable haveged
+systemctl start haveged
+
+# 5. pdnsd
+rpm -ivh http://members.home.nl/p.a.rombouts/pdnsd/releases/pdnsd-1.2.9a-par_sl6.x86_64.rpm
+
+# 6. chinadns
+centos::chinadns
+
 centos::shadowsocks-libev
+
 centos::ss-tproxy
+
+# centos::dnsforwarder
+
+cp /vagrant/ss-tproxy.conf /etc/tproxy/ss-tproxy.conf

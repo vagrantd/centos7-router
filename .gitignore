@@ -1,2 +1,3 @@
 .vagrant
 *.box
+ss-tproxy.conf
